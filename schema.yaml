@@ -1,1 +1,24 @@
 # 阶段1：本体层的 YAML 描述 (清晰易读)
+nodes:
+  - label: Concept
+    properties: [name]
+  - label: Technology
+    properties: [name]
+  - label: Algorithm
+    properties: [name]
+  - label: Chapter
+    properties: [name]
+
+relationships:
+  - type: INCLUDES_CONCEPT
+    start: Chapter
+    end: Concept
+  - type: REQUIRES_PRE
+    start: Concept
+    end: Concept
+  - type: USES_TECH
+    start: Concept
+    end: Technology
+  - type: APPLIES_ALGO
+    start: Concept
+    end: Algorithm

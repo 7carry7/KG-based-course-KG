@@ -1,0 +1,10 @@
+#neo4j
+#flask
+#yyaml
+# spacy
+# 占位符，用于未来扩展
+# requests
+# beautifulsoup4
+# pdfminer.six
+# transformers
+# torch
