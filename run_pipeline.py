@@ -1,3 +1,4 @@
+# coding=utf-8
 # 运行整个数据处理和图谱构建流程的主脚本
 import configparser
 from kg_course_project.graph_db.connection import Neo4jConnection
