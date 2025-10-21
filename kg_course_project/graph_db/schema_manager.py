@@ -3,7 +3,11 @@ from kg_course_project.utils.file_io import read_yaml
 import time
 
 
-def clear_database(conn):
+def clear_database(conn, confirm=False):
+
+    if not confirm:
+        raise ValueError('此操作会清空所有数据！请设置 confirm=True 来确认')
+
     """清空所有节点和关系 (危险操作)"""
     query_relations = "MATCH ()-[r]-() DELETE r"
     query_nodes = "MATCH (n) DELETE n"
