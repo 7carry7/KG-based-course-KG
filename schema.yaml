@@ -1,12 +1,22 @@
 # 阶段1：本体层的 YAML 描述 (清晰易读)
 nodes:
   - label: Concept
-    properties: [name]
+    properties: [name, description]
+  - label: Teacher
+    properties: [name, gender, age]
   - label: Technology
     properties: [name]
   - label: Algorithm
     properties: [name]
   - label: Chapter
+    properties: [name, description]
+  - label: Course
+    properties: [name, description]
+  - label: Scholar
+    properties: [name, country, age]
+  - label: Paper
+    properties: [name, time]
+  - label: Application
     properties: [name]
 
 relationships:
@@ -22,3 +32,15 @@ relationships:
   - type: APPLIES_ALGO
     start: Concept
     end: Algorithm
+  - type: HAS_CHAPTER
+    start: Course
+    end: Chapter
+  - type: PROPOSED
+    start: Scholar
+    end: Concept
+  - type: AUTHORED_BY
+    start: Paper
+    end: Scholar
+  - type: APPLIED_IN
+    start: Concept
+    end: Application

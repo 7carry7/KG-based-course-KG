@@ -29,6 +29,9 @@ def extract_text_from_pdf(pdf_path):
         for page_num in range(doc.page_count):
             page = doc.load_page(page_num)
             text = page.get_text("text")  # 提取纯文本
+            # 确保文本正确编码
+            if isinstance(text, bytes):
+                page_text = text.decode('utf-8', errors='ignore')
             full_text.append(text)
 
         doc.close()

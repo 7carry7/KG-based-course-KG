@@ -2,6 +2,7 @@
 import Levenshtein
 from collections import defaultdict
 from kg_course_project.utils.logger import get_logger
+import re
 
 logger = get_logger(__name__)
 

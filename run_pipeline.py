@@ -4,7 +4,7 @@ import configparser
 from kg_course_project.graph_db.connection import Neo4jConnection
 from kg_course_project.graph_db import schema_manager, data_loader
 from kg_course_project.data_acquisition import data_cleaner
-from kg_course_project.extraction import ner, re
+from kg_course_project.extraction import ner, relationship, fusion
 import os
 
 

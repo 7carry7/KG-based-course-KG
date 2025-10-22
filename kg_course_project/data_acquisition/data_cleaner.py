@@ -1,83 +1,155 @@
 # 文本清洗
-import fitz  # PyMuPDF 库
-import os
-from kg_course_project.utils.logger import get_logger
-
-logger = get_logger(__name__)
+import re
+import unicodedata
+from html import unescape
 
 
-def extract_text_from_pdf(pdf_path):
+def normalize_unicode(text):
     """
-    从指定的 PDF 文件中提取所有文本。
-
-    :param pdf_path: PDF 文件的路径
-    :return: 提取的全部文本，如果失败则返回 None
+    处理 Unicode 字符，例如将 'ﬁ' 转换为 'fi'，并使用 NFC 范式。
     """
-    if not os.path.exists(pdf_path):
-        logger.error(f"PDF 文件未找到: {pdf_path}")
-        return None
+    return unicodedata.normalize('NFC', text)
 
-    full_text = []
 
-    try:
-        # 打开 PDF 文件
-        doc = fitz.open(pdf_path)
+def remove_html_tags(text):
+    """
+    使用正则表达式移除残留的 HTML 标签。
+    (注: BeautifulSoup 应该是首选，这只是一个后备清理)
+    """
+    cleanr = re.compile('<.*?>')
+    return re.sub(cleanr, ' ', text)
 
-        logger.info(f"正在解析 PDF: {pdf_path}, 共 {doc.page_count} 页。")
 
-        # 遍历每一页
-        for page_num in range(doc.page_count):
-            page = doc.load_page(page_num)
-            text = page.get_text("text")  # 提取纯文本
-            full_text.append(text)
+def remove_urls(text):
+    """移除文本中的 http/https/ftp/www 链接"""
+    # 广义的 URL 匹配
+    url_pattern = r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
+    # 匹配 www. 开头
+    www_pattern = r'www\.(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
+    text = re.sub(url_pattern, ' ', text)
+    text = re.sub(www_pattern, ' ', text)
+    return text
 
-        doc.close()
 
-        return "\n".join(full_text)
+def normalize_punctuation(text):
+    """
+    将非标准的标点符号（如智能引号）转换回标准 ASCII。
+    这对基于规则的抽取非常重要。
+    """
+    replacements = {
+        '“': '"', '”': '"',  # 中文/智能双引号
+        '‘': "'", '’': "'",  # 中文/智能单引号
+        '（': '(', '）': ')',  # 中文括号
+        '：': ':',  # 中文冒号
+        '，': ',',  # 中文逗号
+        '；': ';',  # 中文分号
+        '。': '.',  # 中文句号
+        '？': '?',  # 中文问号
+        '！': '!',  # 中文叹号
+        '—': '-',  # 长破折号
+        '…': '...',  # 省略号
+    }
+    for old, new in replacements.items():
+        text = text.replace(old, new)
+    return text
 
-    except fitz.errors.EmptyFileError:
-        logger.error(f"PDF 文件为空或已损坏: {pdf_path}")
-    except Exception as e:
-        logger.error(f"解析 PDF 时发生未知错误 {pdf_path}: {e}")
 
-    return None
+def remove_extra_whitespace(text):
+    """
+    移除多余的空格、换行符和制表符。
+    """
+    text = text.replace('\n', ' ')  # 替换换行符为空格
+    text = text.replace('\t', ' ')  # 替换制表符为空格
+    text = re.sub(r'\s+', ' ', text)  # 将多个空格合并为一个
+    return text.strip()  # 去除首尾空格
+
+
+def remove_pdf_artifacts(text):
+    """
+    移除 PDF 解析时常见的残留物，如页眉、页脚、页码。
+    (这是一个简化的示例)
+    """
+    # 移除 "Page X" 或 "第 X 页"
+    text = re.sub(r'Page\s+\d+', ' ', text, flags=re.IGNORECASE)
+    text = re.sub(r'第\s*\d+\s*页', ' ', text)
+    # 移除单独的数字（可能是页码）
+    text = re.sub(r'^\s*\d+\s*$', '', text, flags=re.MULTILINE)
+    return text
+
+
+def clean_text_pipeline(text, lowercase=False):
+    """
+    运行一个完整的文本清理流程。
+
+    :param text: 原始输入文本 (可能来自 HTML 或 PDF)
+    :param lowercase: 是否将所有文本转为小写 (对实体识别可能有害)
+    :return: 清理后的文本
+    """
+    # 1. 解码 HTML 实体 (例如 &amp; -> &)
+    text = unescape(text)
+
+    # 2. 移除 HTML 标签 (如果 BeautifulSoup 没清干净)
+    text = remove_html_tags(text)
+
+    # 3. 移除链接
+    text = remove_urls(text)
+
+    # 4. 规范化 Unicode
+    text = normalize_unicode(text)
+
+    # 5. 规范化标点符号 (对中文和英文都重要)
+    text = normalize_punctuation(text)
+
+    # 6. 移除 PDF 特有的残留物
+    text = remove_pdf_artifacts(text)
+
+    # 7. 移除多余的空白
+    text = remove_extra_whitespace(text)
+
+    # 8. (可选) 转为小写
+    if lowercase:
+        text = text.lower()
+
+    return text
+
+
+# --- (保留旧的 simple_clean 以防万一，但推荐使用 pipeline) ---
+def simple_clean(text):
+    """(旧版) 非常简单的文本清洗"""
+    text = text.replace('\n', ' ')  # 替换换行符
+    text = re.sub(r'\s+', ' ', text)  # 替换多个空格
+    text = text.strip()  # 去除首尾空格
+    return text
 
 
 if __name__ == "__main__":
     # --- 测试 ---
-    # 你需要自己准备一个 PDF 文件放在 data/raw/ 目录下
-    # 这里我们假设你有一个 'syllabus.pdf'
+    raw_html_text = """
+    <html><head><title>Test</title></head><body>
+    <h1>第一章：知识表示</h1>
+    <p>
+      本章包含的概念有：“RDF”，“RDFS” 和 <a href="http://example.com">OWL</a>。
+      详情请访问 www.w3.org
+    </p>
+    <p>
+      Page 1
+    </p>
+    </body></html>
+    """
 
-    # (为了让测试能运行，我们先创建一个假的 PDF)
-    test_pdf_path = os.path.join("..", "data", "raw", "test_syllabus.pdf")
+    raw_pdf_text = """
+    一个概念“TransE”...
+    它需要 RDFS。
 
-    # 创建一个简单的测试 PDF (如果它不存在)
-    if not os.path.exists(test_pdf_path):
-        try:
-            os.makedirs(os.path.dirname(test_pdf_path), exist_ok=True)
-            doc = fitz.open()  # 创建新 PDF
-            page = doc.new_page()
-            page.insert_text((72, 72), "第一章：知识表示", fontsize=16)
-            page.insert_text((72, 90), "本章包含：RDF 和 RDFS。")
-            page.insert_text((72, 720), "Page 1")  # 模拟页脚
-            doc.save(test_pdf_path)
-            doc.close()
-            print(f"已创建测试 PDF: {test_pdf_path}")
-        except Exception as e:
-            print(f"创建测试 PDF 失败: {e}")
+    2
 
-    # 运行解析
-    print(f"\n--- 正在测试解析: {test_pdf_path} ---")
-    pdf_text = extract_text_from_pdf(test_pdf_path)
+    第 3 页
+    """
 
-    if pdf_text:
-        print(f"成功获取文本:\n{pdf_text}")
+    print("--- HTML 清理测试 ---")
+    cleaned_html = clean_text_pipeline(raw_html_text)
+    print(cleaned_html)
 
-        # 测试与清理器集成
-        from kg_course_project.data_acquisition.data_cleaner import clean_text_pipeline
-
-        print("\n--- 清理后 ---")
-        cleaned_text = clean_text_pipeline(pdf_text)
-        print(cleaned_text)
-    else:
-        print("解析 PDF 失败。")
+    print("\n--- PDF 清理测试 ---")
+    cleaned_pdf = clean_text_pipeline(raw_pdf_text)
+    print(cleaned_pdf)
