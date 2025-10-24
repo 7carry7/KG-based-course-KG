@@ -1,23 +1,82 @@
 # 阶段1：本体层的 YAML 描述 (清晰易读)
 nodes:
   - label: Concept
-    properties: [name, description]
+    properties:
+      - name: name
+        type: String
+        constraint: unique
+      - name: description
+        type: String
+        index: fulltext
+
   - label: Teacher
-    properties: [name, gender, age]
+    properties:
+      - name: name
+        type: String
+        constraint: unique
+      - name: gender
+        type: String
+        index: simple
+      - name: age
+        type: Integer
+        index: simple
+
   - label: Technology
-    properties: [name]
+    properties:
+      - name: name
+        type: String
+        constraint: unique
+
   - label: Algorithm
-    properties: [name]
+    properties:
+      - name: name
+        type: String
+        constraint: unique
+
   - label: Chapter
-    properties: [name, description]
+    properties:
+      - name: name
+        type: String
+        constraint: unique
+      - name: description
+        type: String
+        index: fulltext
+
   - label: Course
-    properties: [name, description]
+    properties:
+      - name: name
+        type: String
+        constraint: unique
+      - name: description
+        type: String
+        index: fulltext
+
   - label: Scholar
-    properties: [name, country, age]
+    properties:
+      - name: name
+        type: String
+        constraint: unique
+      - name: country
+        type: String
+        index: simple
+      - name: age
+        type: Integer
+        index: simple
+
   - label: Paper
-    properties: [name, time]
+    properties:
+      - name: name  # 假设这是论文标题或一个唯一的标识符
+        type: String
+        constraint: unique # 如果 name 是标题，这里可能应改为 fulltext，并添加一个 doi 作为 unique
+      - name: time  # 假设为年份或日期字符串
+        type: String
+        index: simple
+
   - label: Application
-    properties: [name]
+    properties:
+      - name: name
+        type: String
+        constraint: unique
 
 relationships:
   - type: INCLUDES_CONCEPT

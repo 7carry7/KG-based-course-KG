@@ -127,7 +127,7 @@ def build_relation(head, rel_type, tail):
 
 
 if __name__ == "__main__":
-    # --- 测试 ---
+    # --- 测试 ---, A 动词 B 的形式才能被识别并捕捉到关系
     test_text = ("知识图谱包含RDF 。spaCy 是由 Google 开发。")
     test_vocab = {
         "Concept": ["RDF", "知识图谱"],

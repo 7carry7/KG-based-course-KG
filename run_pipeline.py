@@ -6,6 +6,7 @@ from kg_course_project.graph_db import schema_manager, data_loader
 from kg_course_project.data_acquisition import data_cleaner
 from kg_course_project.extraction import ner, relationship, fusion
 import os
+import re
 
 
 def main_pipeline():
@@ -75,7 +76,7 @@ def main_pipeline():
             (r'([\w\s]+)：\s*本章包含的概念有：([\w\s，]+)', 'INCLUDES_CONCEPT', 1, 2)
         ]
 
-        relations = re.extract_relations_by_rules(cleaned_text, entities, rules)
+        relations = relationship.extract_relations_by_rules(cleaned_text, entities, rules)
         print(f"抽取到关系: {len(relations)} 个")
 
         # 6. 知识存储 (加载到 Neo4j)
