@@ -18,8 +18,10 @@ def main_pipeline():
 
     neo4j_uri = config['NEO4J']['URI']
     neo4j_auth = (config['NEO4J']['USER'], config['NEO4J']['PASSWORD'])
-    schema_path = config['PATHS']['SCHEMA_FILE']
-    raw_data_dir = config['PATHS']['RAW_DATA_DIR']
+    # schema_path = config['PATHS']['SCHEMA_FILE']
+    # raw_data_dir = config['PATHS']['RAW_DATA_DIR']
+    schema_path = "schema.yaml"
+    raw_data_dir = ""
 
     # 2. 初始化数据库连接
     db_conn = Neo4jConnection(uri=neo4j_uri, auth=neo4j_auth)

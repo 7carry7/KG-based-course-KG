@@ -52,35 +52,39 @@ if __name__ == "__main__":
     # 这里我们假设你有一个 'syllabus.pdf'
 
     # (为了让测试能运行，我们先创建一个假的 PDF)
-    test_pdf_path = os.path.join("..", "data", "raw", "test_syllabus.pdf")
+    pdf_dir = os.path.join("..", "data_raw", "pdf")
+    file_path = ''
+    for filename in os.listdir(pdf_dir):
+        if filename.endswith(".pdf"):
+            file_path = os.path.join(pdf_dir, filename)
 
     # 创建一个简单的测试 PDF (如果它不存在)
-    if not os.path.exists(test_pdf_path):
+    if not os.path.exists(file_path):
         try:
-            os.makedirs(os.path.dirname(test_pdf_path), exist_ok=True)
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
             doc = fitz.open()  # 创建新 PDF
             page = doc.new_page()
             page.insert_text((72, 72), "第一章：知识表示", fontsize=16)
             page.insert_text((72, 90), "本章包含：RDF 和 RDFS。")
             page.insert_text((72, 720), "Page 1")  # 模拟页脚
-            doc.save(test_pdf_path)
+            doc.save(file_path)
             doc.close()
-            print(f"已创建测试 PDF: {test_pdf_path}")
+            print(f"已创建测试 PDF: {file_path}")
         except Exception as e:
             print(f"创建测试 PDF 失败: {e}")
 
     # 运行解析
-    print(f"\n--- 正在测试解析: {test_pdf_path} ---")
-    pdf_text = extract_text_from_pdf(test_pdf_path)
+    print(f"\n--- 正在测试解析: {file_path} ---")
+    pdf_text = extract_text_from_pdf(file_path)
 
     if pdf_text:
-        print(f"成功获取文本:\n{pdf_text}")
+        print(f"成功获取文本:\n{pdf_text[:500]}")
 
         # 测试与清理器集成
         from kg_course_project.data_acquisition.data_cleaner import clean_text_pipeline
 
         print("\n--- 清理后 ---")
         cleaned_text = clean_text_pipeline(pdf_text)
-        print(cleaned_text)
+        print(cleaned_text[:500])
     else:
         print("解析 PDF 失败。")

@@ -80,6 +80,7 @@ nodes:
 
 relationships:
   - type: INCLUDES_CONCEPT
+    description: "课程章节包含具体的知识点"
     start: Chapter
     end: Concept
   - type: REQUIRES_PRE

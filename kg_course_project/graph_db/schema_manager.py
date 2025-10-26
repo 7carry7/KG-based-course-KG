@@ -64,6 +64,7 @@ def apply_schema_from_yaml(conn, schema_path):
 
     # --- 1. 应用节点模式 ---
     logger.info("开始应用节点 (Node) 模式...")
+    # schema is a dict
     for node in schema.get('nodes', []):
         label = node['label']
         for prop in node.get('properties', []):
@@ -91,9 +92,10 @@ def apply_schema_from_yaml(conn, schema_path):
             # 1c. 全文索引 (Full-Text Index)
             elif prop.get('index') == 'fulltext':
                 index_name = f"ft_idx_{label}_{prop_name}"
+
                 query = f"""
                 CREATE FULLTEXT INDEX {index_name} IF NOT EXISTS FOR (n:{label}) 
-                ON (n.{prop_name})
+                ON EACH [n.{prop_name}]
                 """
                 try:
                     conn.run_query(query)
@@ -101,22 +103,22 @@ def apply_schema_from_yaml(conn, schema_path):
                 except ClientError as e:
                     logger.warning(f"无法创建全文索引 '{index_name}' (可能已存在或配置不支持): {e}")
 
-    # --- 2. 应用关系模式 ---
-    logger.info("开始应用关系 (Relationship) 模式...")
-    for rel in schema.get('relationships', []):
-        rel_type = rel['type']
-        for prop in rel.get('properties', []):
-            prop_name = prop['name']
-
-            # 2a. 关系属性索引 (B-Tree Index)
-            if prop.get('index') == 'simple':
-                index_name = f"idx_rel_{rel_type}_{prop_name}"
-                query = f"""
-                CREATE INDEX {index_name} IF NOT EXISTS FOR ()-[r:{rel_type}]-() 
-                ON (r.{prop_name})
-                """
-                conn.run_query(query)
-                logger.info(f"已应用 [Rel Index] ON (:{rel_type}) [{prop_name}]")
+    # # --- 2. 应用关系模式 ---
+    # logger.info("开始应用关系 (Relationship) 模式...")
+    # for rel in schema.get('relationships', []):
+    #     rel_type = rel['type']
+    #     for prop in rel.get('properties', []):
+    #         prop_name = prop['name']
+    #
+    #         # 2a. 关系属性索引 (B-Tree Index)
+    #         if prop.get('index') == 'simple':
+    #             index_name = f"idx_rel_{rel_type}_{prop_name}"
+    #             query = f"""
+    #             CREATE INDEX {index_name} IF NOT EXISTS FOR ()-[r:{rel_type}]-()
+    #             ON (r.{prop_name})
+    #             """
+    #             conn.run_query(query)
+    #             logger.info(f"已应用 [Rel Index] ON (:{rel_type}) [{prop_name}]")
 
     logger.info("模式应用完毕。")
 
@@ -203,7 +205,7 @@ if __name__ == "__main__":
 
     config = configparser.ConfigParser()
     try:
-        config.read('config.ini')
+        config.read('../../config.ini', encoding='utf-8')
         uri = config['NEO4J']['URI']
         auth = (config['NEO4J']['USER'], config['NEO4J']['PASSWORD'])
     except KeyError:
@@ -211,7 +213,7 @@ if __name__ == "__main__":
         print("请确保 config.ini 存在于根目录并包含 [NEO4J] 部分。")
         exit(1)
 
-    schema_file = 'schema.yaml'  # 确保 V2 版本的 schema.yaml 在同级目录
+    schema_file = '../../schema.yaml'
 
     conn = None
     try:
@@ -221,7 +223,7 @@ if __name__ == "__main__":
 
         # 1. (危险) 重置环境
         logger.info("--- 步骤 1: 重置数据库 ---")
-        clear_database(conn)
+        clear_database(conn, confirm=True)
         drop_all_schema(conn)
 
         # 2. 应用新模式
