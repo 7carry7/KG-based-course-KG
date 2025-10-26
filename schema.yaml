@@ -78,6 +78,12 @@ nodes:
         type: String
         constraint: unique
 
+  - label: Metric
+    properties:
+      - name: name
+        type: String
+        constraint: unique
+
 relationships:
   - type: INCLUDES_CONCEPT
     description: "课程章节包含具体的知识点"

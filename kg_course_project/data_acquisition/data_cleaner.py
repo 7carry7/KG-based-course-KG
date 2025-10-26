@@ -2,6 +2,7 @@
 import re
 import unicodedata
 from html import unescape
+from collections import Counter
 try:
     from bs4 import BeautifulSoup
     BEAUTIFULSOUP_AVAILABLE = True

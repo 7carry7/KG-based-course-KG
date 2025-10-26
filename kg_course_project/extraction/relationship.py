@@ -3,6 +3,7 @@ import re
 from spacy.tokens import Doc
 from kg_course_project.extraction.ner import NLP, load_spacy_model
 from kg_course_project.utils.logger import get_logger
+import fusion
 
 logger = get_logger(__name__)
 
@@ -125,10 +126,80 @@ def build_relation(head, rel_type, tail):
         "tail_label": tail['label']
     }
 
+# --- 《知识图谱》课程教材专用正则规则集（完整） ---
+rules = [
+    # ---------------- 定义/概念 ----------------
+    (r"(\w+)是(\w+)", "IS_A", 1, 2),
+    (r"(\w+)的子概念是(\w+)", "SUBCONCEPT", 1, 2),
+    (r"(\w+)属于(\w+)", "BELONGS_TO", 1, 2),
+    (r"(\w+)是一种(\w+)", "IS_A", 1, 2),
+    (r"(\w+)指的是(\w+)", "IS_A", 1, 2),
+    (r"(\w+)即(\w+)", "IS_A", 1, 2),
+    (r"(\w+)是由(\w+)提出的", "PROPOSED_BY", 1, 2),
+
+    # ---------------- 分类/包含 ----------------
+    (r"(\w+)包含([\w，、]+)", "INCLUDES_CONCEPT", 1, 2),
+    (r"(\w+)包括([\w，、]+)", "INCLUDES_CONCEPT", 1, 2),
+    (r"(\w+)由([\w，、]+)组成", "INCLUDES_CONCEPT", 1, 2),
+    (r"(\w+)涉及([\w，、]+)", "USES", 1, 2),
+    (r"(\w+)包括([\w，、]+)等概念", "INCLUDES_CONCEPT", 1, 2),
+    (r"(\w+)涉及([\w，、]+)等技术", "USES", 1, 2),
+    (r"(\w+)包含以下([\w，、]+)", "INCLUDES_CONCEPT", 1, 2),
+
+    # ---------------- 开发/来源 ----------------
+    (r"(\w+)由(\w+)开发", "DEVELOPED_BY", 1, 2),
+    (r"(\w+)由(\w+)设计", "DEVELOPED_BY", 1, 2),
+    (r"(\w+)由(\w+)维护", "MAINTAINED_BY", 1, 2),
+    (r"(\w+)基于(\w+)", "BASED_ON", 1, 2),
+    (r"(\w+)依赖于(\w+)", "REQUIRES_PRE", 1, 2),
+
+    # ---------------- 应用/任务 ----------------
+    (r"(\w+)使用(\w+)", "USES", 1, 2),
+    (r"(\w+)应用于(\w+)", "APPLIED_IN", 1, 2),
+    (r"(\w+)在(\w+)中起作用", "APPLIED_IN", 1, 2),
+    (r"(\w+)可用于(\w+)", "APPLIED_IN", 1, 2),
+    (r"(\w+)适用于(\w+)", "APPLIED_IN", 1, 2),
+    (r"(\w+)执行(\w+)任务", "PERFORMS_TASK", 1, 2),
+
+    # ---------------- 前置/依赖 ----------------
+    (r"(\w+)前置(\w+)", "PRECEDES", 1, 2),
+    (r"(\w+)需要(\w+)", "REQUIRES_PRE", 1, 2),
+    (r"(\w+)依赖(\w+)", "REQUIRES_PRE", 1, 2),
+    (r"(\w+)建立在(\w+)基础上", "REQUIRES_PRE", 1, 2),
+
+    # ---------------- 相关/扩展 ----------------
+    (r"(\w+)与(\w+)相关", "RELATED_TO", 1, 2),
+    (r"(\w+)扩展(\w+)", "EXTENDS", 1, 2),
+    (r"(\w+)融合(\w+)", "FUSES_WITH", 1, 2),
+    (r"(\w+)结合(\w+)", "COMBINES_WITH", 1, 2),
+    (r"(\w+)支持(\w+)", "SUPPORTED_BY", 1, 2),
+    (r"(\w+)实现了(\w+)", "IMPLEMENTS", 1, 2),
+    (r"(\w+)开发了(\w+)", "DEVELOPED_BY", 1, 2),
+
+    # ---------------- 教材中常见句式 ----------------
+    (r"(\w+)是由(\w+)提出的", "PROPOSED_BY", 1, 2),
+    (r"(\w+)属于(\w+)范畴", "BELONGS_TO", 1, 2),
+    (r"(\w+)在(\w+)中使用", "APPLIED_IN", 1, 2),
+    (r"(\w+)依赖(\w+)进行处理", "REQUIRES_PRE", 1, 2),
+    (r"(\w+)由([\w，、]+)构成", "INCLUDES_CONCEPT", 1, 2),
+    (r"(\w+)包括([\w，、]+)模块", "INCLUDES_CONCEPT", 1, 2),
+    (r"(\w+)的核心是(\w+)", "CORE_IS", 1, 2),
+    (r"(\w+)与(\w+)结合实现", "COMBINES_WITH", 1, 2),
+    (r"(\w+)通过(\w+)完成", "COMPLETES_WITH", 1, 2),
+    (r"(\w+)使用了(\w+)", "USES", 1, 2),
+    (r"(\w+)基于(\w+)构建", "BASED_ON", 1, 2),
+    (r"(\w+)支持([\w，、]+)", "SUPPORTED_BY", 1, 2),
+    (r"(\w+)包含([\w，、]+)部分", "INCLUDES_CONCEPT", 1, 2),
+    (r"(\w+)是(\w+)的一部分", "PART_OF", 1, 2),
+    (r"(\w+)的组成部分有([\w，、]+)", "INCLUDES_CONCEPT", 1, 2),
+    (r"(\w+)与(\w+)协同工作", "RELATED_TO", 1, 2),
+    (r"(\w+)实现了([\w，、]+)功能", "IMPLEMENTS", 1, 2),
+    (r"(\w+)扩展了(\w+)", "EXTENDS", 1, 2)
+]
 
 if __name__ == "__main__":
     # --- 测试 ---, A 动词 B 的形式才能被识别并捕捉到关系
-    test_text = ("知识图谱包含RDF 。spaCy 是由 Google 开发。")
+    test_text = ("知识图谱包含RDF 。 spaCy由Google开发。")
     test_vocab = {
         "Concept": ["RDF", "知识图谱"],
         "Technology": ["spaCy"],
@@ -145,8 +216,17 @@ if __name__ == "__main__":
     nlp = load_spacy_model()
     doc = nlp(test_text)
 
-    relations = extract_relations_spacy(doc, entities, test_vocab)
-    print(f"--- 抽取到的关系 (spaCy): ---\n{relations}\n")
+    relations1 = extract_relations_by_rules(test_text, entities, rules)
+    relations2 = extract_relations_spacy(doc, entities, test_vocab)
+    relations = relations1 + relations2
+    print(f"--- 抽取到的关系：---\n{relations}\n")
+
+    print("--- 1. 创建规范化 Map ---")
+    cmap = fusion.create_canonical_map(entities, similarity_threshold=0.8)
+    print(f"Map: {cmap}")
+
+    relations = fusion.resolve_relations(relations, cmap)
+    print(f"--- 清晰后的关系 (spaCy): ---\n{relations}\n")
 
     # 预期:
     # {'head': '知识图谱', 'head_label': 'Concept', 'type': 'INCLUDES_CONCEPT', 'tail': 'RDF', 'tail_label': 'Concept'}

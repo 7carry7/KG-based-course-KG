@@ -3,6 +3,7 @@ import Levenshtein
 from collections import defaultdict
 from kg_course_project.utils.logger import get_logger
 import re
+from collections import Counter
 
 logger = get_logger(__name__)
 
@@ -34,7 +35,8 @@ def create_canonical_map(entities, similarity_threshold=0.85):
     grouped_by_label = defaultdict(list)
     for ent in entities:
         # 我们只关心我们定义的核心实体
-        if ent['label'] in ["Concept", "Technology", "Algorithm", "Scholar"]:
+        if ent['label'] in ["Concept", "Technology", "Algorithm", "Scholar", "Chapter"
+                            "Course", "Paper", "Application", "Metric"]:
             grouped_by_label[ent['label']].append(ent['name'])
 
     canonical_map = {}
@@ -69,17 +71,7 @@ def create_canonical_map(entities, similarity_threshold=0.85):
     logger.info(f"实体融合完成, 生成 {len(canonical_map)} 条规范化规则。")
     return canonical_map
 
-
-def resolve_entities_and_relations(entities, relations, canonical_map):
-    """
-    使用 canonical_map 来清洗实体列表和关系列表。
-
-    :param entities: 原始实体列表
-    :param relations: 原始关系列表
-    :param canonical_map: create_canonical_map() 的输出
-    :return: (resolved_entities, resolved_relations)
-    """
-
+def resolve_entities(entities, canonical_map):
     resolved_entities = []
     seen_entities = set()
 
@@ -100,6 +92,39 @@ def resolve_entities_and_relations(entities, relations, canonical_map):
             if (ent['name'], ent['label']) not in seen_entities:
                 resolved_entities.append(ent)
                 seen_entities.add((ent['name'], ent['label']))
+
+    return resolved_entities
+
+def resolve_relations(relations, canonical_map):
+    """
+    使用 canonical_map 来清洗实体列表和关系列表。
+
+    :param entities: 原始实体列表
+    :param relations: 原始关系列表
+    :param canonical_map: create_canonical_map() 的输出
+    :return: (resolved_entities, resolved_relations)
+    """
+
+    # resolved_entities = []
+    # seen_entities = set()
+    #
+    # # 1. 解析实体列表
+    # for ent in entities:
+    #     norm_name = normalize_entity_name(ent['name'])
+    #
+    #     # 检查是否需要被融合
+    #     if norm_name in canonical_map:
+    #         canonical_name = canonical_map[norm_name]
+    #
+    #         # 只添加规范化后的实体，并确保去重
+    #         if (canonical_name, ent['label']) not in seen_entities:
+    #             resolved_entities.append({"name": canonical_name, "label": ent['label']})
+    #             seen_entities.add((canonical_name, ent['label']))
+    #     else:
+    #         # 这个实体不在我们的融合范围内 (例如 PER, LOC)，直接添加
+    #         if (ent['name'], ent['label']) not in seen_entities:
+    #             resolved_entities.append(ent)
+    #             seen_entities.add((ent['name'], ent['label']))
 
     # 2. 解析关系列表
     resolved_relations = []
@@ -126,8 +151,49 @@ def resolve_entities_and_relations(entities, relations, canonical_map):
             })
             seen_relations.add(rel_key)
 
-    return resolved_entities, resolved_relations
+    return resolved_relations
 
+# 常见无意义词
+STOP_WORDS = {"的", "和", "或", "方法", "系统", "任务", "模型"}
+
+
+def filter_entities(entities, min_len=2, min_freq=2):
+    """
+    对抽取的实体执行过滤逻辑。
+    :param entities: [{'name': ..., 'label': ..., ...}, ...]
+    :return: 过滤后的实体列表
+    """
+    # 统计频次
+    freq = Counter(ent["name"] for ent in entities)
+    filtered = []
+
+    for ent in entities:
+        name = ent["name"].strip()
+        label = ent["label"]
+
+        # 1. 长度过滤
+        if len(name) < min_len:
+            continue
+
+        # 2. 停用词过滤
+        if name in STOP_WORDS:
+            continue
+
+        # 3. 频次过滤
+        if freq[name] < min_freq:
+            continue
+
+        # 4. 合法字符检查
+        if not re.match(r'^[\u4e00-\u9fa5a-zA-Z0-9_+\-]+$', name):
+            continue
+
+        # 5. 限定标签（只保留关键类别）
+        if label not in {"Concept", "Algorithm", "Technology", "Application", "Task"}:
+            continue
+
+        filtered.append(ent)
+
+    return filtered
 
 if __name__ == "__main__":
     # --- 测试 ---
@@ -150,7 +216,10 @@ if __name__ == "__main__":
     print(f"Map: {cmap}")
 
     print("\n--- 2. 解析实体和关系 ---")
-    final_ents, final_rels = resolve_entities_and_relations(test_entities, test_relations, cmap)
+    # final_ents, final_rels = resolve_entities_and_relations(test_entities, test_relations, cmap)
+
+    final_ents = resolve_entities(test_entities, cmap)
+    final_rels = resolve_relations(test_relations, cmap)
 
     print(f"解析后的实体: {final_ents}")
     print(f"解析后的关系: {final_rels}")
